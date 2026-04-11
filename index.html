@@ -1,45 +1,232 @@
 <!DOCTYPE html>
-<html>
-    <style>
-        table, th, td{
-            border:1px solid gray;
-            border-collapse: collapse;
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Root Finder Pro: Newton, Bisection & Regula Falsi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4 md:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+            <h1 class="text-3xl font-extrabold mb-6 text-slate-800 text-center">Perbandingan Metode Pencari Akar</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600">Persamaan f(x):</label>
+                        <input type="text" id="equation" value="x^2 - 4" class="w-full border-2 border-slate-200 p-2 rounded-lg focus:border-blue-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600">Batas Bawah (a) / Tebakan Awal:</label>
+                        <input type="number" id="lowerBound" value="0" class="w-full border-2 border-slate-200 p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600">Batas Atas (b):</label>
+                        <input type="number" id="upperBound" value="3" class="w-full border-2 border-slate-200 p-2 rounded-lg">
+                        <p class="text-xs text-slate-400 mt-1">*Batas atas hanya untuk Bisection & Regula Falsi</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600">Toleransi Error:</label>
+                        <input type="number" id="tolerance" value="0.0001" step="0.000001" class="w-full border-2 border-slate-200 p-2 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600">Max Iterasi:</label>
+                        <input type="number" id="maxIter" value="50" class="w-full border-2 border-slate-200 p-2 rounded-lg">
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <h3 class="font-bold text-blue-800 mb-2 text-center">Analisis Perbandingan</h3>
+                    <div id="comparisonStats" class="text-sm space-y-1 text-blue-700">
+                        <p>Newton: -</p>
+                        <p>Bisection: -</p>
+                        <p>Regula Falsi: -</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="runAllMethods()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition duration-200 transform hover:-translate-y-1">
+                Jalankan Analisis & Visualisasi
+            </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+            <h2 class="text-xl font-bold mb-4 text-slate-700">Visualisasi Grafik f(x)</h2>
+            <div class="h-80 w-full">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+
+        <div id="resultContainer" class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 hidden">
+            <h2 class="text-xl font-bold mb-4 text-slate-700">Detail Iterasi Newton-Raphson</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-600">
+                        <tr>
+                            <th class="p-3 border">Iterasi</th>
+                            <th class="p-3 border">xi</th>
+                            <th class="p-3 border">f(xi)</th>
+                            <th class="p-3 border">Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        function runAllMethods() {
+            const eq = document.getElementById('equation').value;
+            const a = parseFloat(document.getElementById('lowerBound').value);
+            const b = parseFloat(document.getElementById('upperBound').value);
+            const tol = parseFloat(document.getElementById('tolerance').value);
+            const maxI = parseInt(document.getElementById('maxIter').value);
+
+            try {
+                const f = (x) => math.evaluate(eq, {x: x});
+                const fDash = (x) => math.derivative(eq, 'x').evaluate({x: x});
+
+                // 1. Newton Raphson
+                const resNewton = solveNewton(f, fDash, a, tol, maxI);
+                
+                // 2. Bisection
+                const resBisection = solveBisection(f, a, b, tol, maxI);
+
+                // 3. Regula Falsi
+                const resRegula = solveRegulaFalsi(f, a, b, tol, maxI);
+
+                // Update Stats
+                displayStats(resNewton, resBisection, resRegula);
+                
+                // Update Table (Newton)
+                updateTable(resNewton.history);
+                
+                // Update Graph
+                drawGraph(f, a, b, resNewton.root);
+
+                document.getElementById('resultContainer').classList.remove('hidden');
+
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
         }
-    </style>
-    <body>
-        <h2>Transactions</h2>
-        <table style="width:100%">
-            <tr>
-                <th>User ID</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Cash or Credit</th>
-                <th>Total</th>
 
-            </tr>
-            <tr>
-                <td>00001</td>
-                <td>Andy Stefanus</td>
-                <td>5555-1234</td>
-                <td>Cash</td>
-                <td>IDR 1.250.000,-</td>
-            </tr>
-            <tr>
-                <td>00009</td>
-                <td>John Doe</td>
-                <td>5555-7890</td>
-                <td>Debit</td>
-                <td>IDR 5.500.000,-</td>
-            </tr>
-            <tr>
-                <td>00031</td>
-                <td>Michael Schucracker</td>
-                <td>5555-7788</td>
-                <td>Cash</td>
-                <td>IDR 756.400,-</td>
-            </tr>
-            </table>
+        function solveNewton(f, fDash, x0, tol, maxI) {
+            let xi = x0;
+            let history = [];
+            for (let i = 0; i < maxI; i++) {
+                let fxi = f(xi);
+                let dfxi = fDash(xi);
+                if (Math.abs(dfxi) < 1e-10) break;
+                
+                let xi_next = xi - (fxi / dfxi);
+                let err = Math.abs(xi_next - xi);
+                history.push({iter: i+1, x: xi, fx: fxi, error: err});
+                
+                if (err < tol) return {root: xi_next, iter: i+1, history: history};
+                xi = xi_next;
+            }
+            return {root: xi, iter: maxI, history: history};
+        }
 
+        function solveBisection(f, a, b, tol, maxI) {
+            if (f(a) * f(b) >= 0) return {iter: "Gagal (f(a)*f(b) > 0)"};
+            let c, iter = 0;
+            while ((b - a) / 2 > tol && iter < maxI) {
+                iter++;
+                c = (a + b) / 2;
+                if (f(c) === 0) break;
+                else if (f(a) * f(c) < 0) b = c;
+                else a = c;
+            }
+            return {iter: iter};
+        }
 
-    </body>
+        function solveRegulaFalsi(f, a, b, tol, maxI) {
+            if (f(a) * f(b) >= 0) return {iter: "Gagal (f(a)*f(b) > 0)"};
+            let c, c_old, iter = 0;
+            do {
+                iter++;
+                c_old = c;
+                c = b - (f(b) * (b - a)) / (f(b) - f(a));
+                if (f(a) * f(c) < 0) b = c; else a = c;
+            } while (Math.abs(c - c_old) > tol && iter < maxI);
+            return {iter: iter};
+        }
+
+        function displayStats(n, b, r) {
+            document.getElementById('comparisonStats').innerHTML = `
+                <p><b>Newton:</b> ${n.iter} Iterasi (Akar: ${n.root?.toFixed(4)})</p>
+                <p><b>Bisection:</b> ${b.iter} Iterasi</p>
+                <p><b>Regula Falsi:</b> ${r.iter} Iterasi</p>
+            `;
+        }
+
+        function updateTable(history) {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = history.map(h => `
+                <tr class="hover:bg-slate-50 transition border-b">
+                    <td class="p-3 font-mono">${h.iter}</td>
+                    <td class="p-3">${h.x.toFixed(6)}</td>
+                    <td class="p-3">${h.fx.toFixed(6)}</td>
+                    <td class="p-3 text-red-500">${h.error.toFixed(6)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function drawGraph(f, a, b, root) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const xValues = [];
+            const yValues = [];
+            // Buat range grafik sedikit lebih lebar dari input a dan b
+            const start = Math.min(a, b) - 2;
+            const end = Math.max(a, b) + 2;
+
+            for (let x = start; x <= end; x += 0.2) {
+                xValues.push(x.toFixed(1));
+                yValues.push(f(x));
+            }
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xValues,
+                    datasets: [{
+                        label: 'f(x)',
+                        data: yValues,
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0
+                    }, {
+                        label: 'Akar Ditemukan',
+                        data: [{x: root?.toFixed(1), y: 0}],
+                        backgroundColor: 'red',
+                        pointRadius: 6,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom' },
+                        y: { border: { display: true } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
 </html>
