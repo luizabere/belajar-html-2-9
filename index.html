@@ -107,19 +107,26 @@
 
         // --- ALGORITMA NEWTON RAPHSON ---
         function solveNewton(f, fDash, x0, tol, maxI) {
-            let xi = x0;
-            let history = [];
+            let xi = x0; // Inisialisasi tebakan awal
+            let history = []; // Array untuk menyimpan riwayat iterasi (untuk tabel)
+            
             for (let i = 0; i < maxI; i++) {
-                let fxi = f(xi);
-                let dfxi = fDash(xi);
+                let fxi = f(xi); // Evaluasi nilai fungsi pada xi
+                let dfxi = fDash(xi); // Evaluasi nilai turunan pada xi
+                
+                // Pengecekan Titik Stasioner: Jika turunan mendekati 0, hentikan.
                 if (Math.abs(dfxi) < 1e-10) return {root: xi, iter: "Gagal (Turunan Nol)", history};
                 
-                let xi_next = xi - (fxi / dfxi);
-                let err = Math.abs(xi_next - xi);
+                // Rumus Newton-Raphson: xi+1 = xi - f(xi)/f'(xi)
+                let xi_next = xi - (fxi / dfxi); 
+                let err = Math.abs(xi_next - xi); // Menghitung error estimasi
+                
                 history.push({iter: i+1, x: xi, fx: fxi, error: err});
                 
+                // Cek Konvergensi: Jika error lebih kecil dari toleransi, akar ditemukan
                 if (err < tol) return {root: xi_next, iter: (i+1) + " Iterasi", history: history};
-                xi = xi_next;
+                
+                xi = xi_next; // Update nilai xi untuk iterasi berikutnya
             }
             return {root: xi, iter: "Mencapai Max Iterasi", history: history};
         }
